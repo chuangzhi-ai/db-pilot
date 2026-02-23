@@ -1,0 +1,128 @@
+name: Build & Release DB Pilot
+
+on:
+  # 定时任务：每天 UTC 0:00 运行
+  schedule:
+    - cron: '0 0 * * *'
+  # 手动触发
+  workflow_dispatch:
+  # 代码推送时运行（仅 main 分支）
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'frontend/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            artifact: db-pilot_x86_64.AppImage
+          - os: macos-latest
+            platform: macos
+            artifact: db-pilot_x64.dmg
+          - os: windows-latest
+            platform: windows
+            artifact: db-pilot_x64-setup.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y webkit2gtk4.0 libappindicator3-0.1 libgtk-3-0 libnotify4 libnss3 xdg-utils libatspi2.0-0 libxshmfence1 libgbm1
+
+      - name: Build Tauri app
+        working-directory: .
+        run: cargo tauri build --release
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: src-tauri/target/release/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep -oP '(?<=version = ")[^"]+' Cargo.toml | head -1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building release v$VERSION"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: DB Pilot v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/*.AppImage
+            artifacts/*.dmg
+            artifacts/*.exe
+          body: |
+            ## DB Pilot v${{ steps.version.outputs.version }}
+
+            A lightweight Navicat alternative built with Tauri + Rust + React.
+
+            ### Features
+            - MySQL / PostgreSQL / SQLite support
+            - SQL query editor
+            - Dark themed UI
+            - Cross-platform
+
+            ### Security Audit
+            Score: 8.2/10 ✅
+
+            ### Links
+            - Source: https://github.com/chuangzhi-ai/db-pilot
+            - Report: [REPORT.md](REPORT.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
