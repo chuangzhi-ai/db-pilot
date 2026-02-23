@@ -1,9 +1,6 @@
 name: Build & Release DB Pilot
 
 on:
-  # 定时任务：每天 UTC 0:00 运行
-  schedule:
-    - cron: '0 0 * * *'
   # 手动触发
   workflow_dispatch:
   # 代码推送时运行（仅 main 分支）
