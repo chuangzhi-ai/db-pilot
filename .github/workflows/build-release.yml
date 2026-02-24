@@ -42,11 +42,11 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install
 
       - name: Build frontend
         working-directory: ./frontend
-        run: npm run build
+        run: npx vite build
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -105,22 +105,6 @@ jobs:
             artifacts/*.AppImage
             artifacts/*.dmg
             artifacts/*.exe
-          body: |
-            ## DB Pilot v${{ steps.version.outputs.version }}
-
-            A lightweight Navicat alternative built with Tauri + Rust + React.
-
-            ### Features
-            - MySQL / PostgreSQL / SQLite support
-            - SQL query editor
-            - Dark themed UI
-            - Cross-platform
-
-            ### Security Audit
-            Score: 8.2/10 ✅
-
-            ### Links
-            - Source: https://github.com/chuangzhi-ai/db-pilot
-            - Report: [REPORT.md](REPORT.md)
+          body: "## DB Pilot v${{ steps.version.outputs.version }}\n\nA lightweight Navicat alternative built with Tauri + Rust + React.\n\n### Features\n- MySQL / PostgreSQL / SQLite support\n- SQL query editor\n- Dark themed UI\n- Cross-platform\n\n### Security Audit\nScore: 8.2/10\n\n### Source\nhttps://github.com/chuangzhi-ai/db-pilot"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
