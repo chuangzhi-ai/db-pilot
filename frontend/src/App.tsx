@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Database, Server, Play, Plus, Save, Trash2, RefreshCw } from 'lucide-react'
+import { Database, Server, Play, Plus, RefreshCw } from 'lucide-react'
 
 // Tauri 2 import check - uses modern import syntax
 
